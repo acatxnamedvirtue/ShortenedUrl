@@ -21,8 +21,35 @@ class ShortenedUrl < ActiveRecord::Base
     )
   end
 
+  def num_clicks
+    Visit.where(shortened_url_id: self.id).count
+  end
+
+  def num_uniques
+    self.visitors.count
+      # where(shortened_url_id: self.id).
+      # select(:user_id).distinct.count
+  end
+
+  def num_recent_uniques
+    Visit.
+      where(shortened_url_id: self.id).
+      where("created_at >= ?", 10.minutes.ago).
+      select(:user_id).distinct.count
+  end
+
   belongs_to :submitter,
     class_name: "User",
     foreign_key: :submitter_id,
     primary_key: :id
+
+  has_many :visits,
+    class_name: "Visit",
+    foreign_key: :shortened_url_id,
+    primary_key: :id
+
+  has_many :visitors,
+    -> { distinct },
+    through: :visits,
+    source: :visitor_id
 end
