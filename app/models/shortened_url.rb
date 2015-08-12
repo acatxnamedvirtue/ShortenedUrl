@@ -22,6 +22,16 @@ class ShortenedUrl < ActiveRecord::Base
     )
   end
 
+  def self.prune(n)
+    all_recent_visits = Visit.where("created_at >= ?", n.minutes.ago)
+    recently_visited_url_ids = all_recent_visits.select(:shortened_url_id).
+      distinct.map { |visit| visit.shortened_url_id }
+
+    ShortenedUrl.delete(ShortenedUrl.where("id NOT IN (?)", recently_visited_url_ids))
+
+    nil
+  end
+
   def num_clicks
     Visit.where(shortened_url_id: self.id).count
   end
