@@ -3,7 +3,8 @@ require 'SecureRandom'
 class ShortenedUrl < ActiveRecord::Base
   validates :short_url, { presence: true, uniqueness: true }
   validates :submitter_id, presence: true
-  validates :long_url, presence: true
+  validates :long_url, { presence: true, length: { maximum: 1024 } }
+  validate :no_more_than_five_in_last_minute
 
   def self.random_code
     code = SecureRandom.urlsafe_base64
@@ -27,8 +28,6 @@ class ShortenedUrl < ActiveRecord::Base
 
   def num_uniques
     self.visitors.count
-      # where(shortened_url_id: self.id).
-      # select(:user_id).distinct.count
   end
 
   def num_recent_uniques
@@ -52,4 +51,15 @@ class ShortenedUrl < ActiveRecord::Base
     -> { distinct },
     through: :visits,
     source: :visitor_id
+
+  private
+  def no_more_than_five_in_last_minute
+    num_recent_urls_created = ShortenedUrl.
+              where(submitter_id: submitter_id).
+              where("created_at >= ?", 1.minutes.ago).count
+    p num_recent_urls_created
+    if num_recent_urls_created >= 5
+      errors[:num_recent_urls_created] << "cant be more than five"
+    end
+  end
 end
